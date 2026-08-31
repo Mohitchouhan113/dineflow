@@ -30,6 +30,7 @@ import {
   getTableById,
   updateTable,
   updateTableStatus,
+  regenerateQR,
 } from "../controllers/tableController.js";
 
 import upload from "../middleware/uploadMiddleware.js";
@@ -144,5 +145,6 @@ router.get("/tables/:id", getTableById);
 router.put("/tables/:id", updateTable);
 
 router.patch("/tables/:id/status", updateTableStatus);
+router.post("/tables/:id/regenerate-qr", regenerateQR);
 
 export default router;

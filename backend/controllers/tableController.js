@@ -31,8 +31,9 @@ export const createTable = async (req, res) => {
       tableNumber: tableNumber.trim(),
     });
 
-    // Frontend URL
-    const qrUrl = `http://localhost:5173/menu/${req.user.vendorId}/${table._id}`;
+    // Frontend URL — use env var, fallback to request origin
+    const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'https://dineflow-rho-fawn.vercel.app';
+    const qrUrl = `${frontendUrl}/menu/${req.user.vendorId}/${table._id}`;
 
     // QR image as base64 data URL
     const qrCode = await QRCode.toDataURL(qrUrl);
@@ -174,6 +175,35 @@ export const updateTable = async (req, res) => {
 };
 
 // TABLE ACTIVE / INACTIVE
+// REGENERATE QR CODE FOR EXISTING TABLE
+export const regenerateQR = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid table ID' });
+    }
+
+    const table = await Table.findOne({ _id: id, vendorId: req.user.vendorId });
+    if (!table) {
+      return res.status(404).json({ success: false, message: 'Table not found' });
+    }
+
+const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'https://dineflow-rho-fawn.vercel.app';
+    const qrUrl = `${frontendUrl}/menu/${req.user.vendorId}/${table._id}`;
+    const qrCode = await QRCode.toDataURL(qrUrl);
+
+    table.qrUrl = qrUrl;
+    table.qrCode = qrCode;
+    await table.save();
+
+    res.json({ success: true, message: 'QR code regenerated', table });
+  } catch (error) {
+    console.error('Regenerate QR Error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 export const updateTableStatus = async (req, res) => {
   try {
     const { isActive } = req.body;
