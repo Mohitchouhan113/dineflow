@@ -203,6 +203,29 @@ export const regenerateQR = async (req, res) => {
   }
 };
 
+// REGENERATE ALL QR CODES FOR VENDOR (bulk)
+export const regenerateAllQR = async (req, res) => {
+  try {
+    const tables = await Table.find({ vendorId: req.user.vendorId });
+    const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'https://dineflow-rho-fawn.vercel.app';
+
+    let updated = 0;
+    for (const table of tables) {
+      const qrUrl = `${frontendUrl}/menu/${req.user.vendorId}/${table._id}`;
+      const qrCode = await QRCode.toDataURL(qrUrl);
+      table.qrUrl = qrUrl;
+      table.qrCode = qrCode;
+      await table.save();
+      updated++;
+    }
+
+    res.json({ success: true, message: `Regenerated ${updated} QR codes`, frontendUrl, count: updated });
+  } catch (error) {
+    console.error('Regenerate All QR Error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // TABLE ACTIVE / INACTIVE
 export const updateTableStatus = async (req, res) => {
   try {

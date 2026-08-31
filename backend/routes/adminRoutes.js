@@ -1,5 +1,5 @@
 import express from "express";
-import { createVendor, getAllVendors, getVendorById, updateVendor, updateVendorStatus, getAdminDashboard, getVendorDetail, getPayments, updateSubscriptionPayment, getAdminAnalytics, updateSubscriptionStatus, changeVendorPlan, getPlanChangeHistory } from "../controllers/adminController.js";
+import { createVendor, getAllVendors, getVendorById, updateVendor, updateVendorStatus, getAdminDashboard, getVendorDetail, getPayments, updateSubscriptionPayment, getAdminAnalytics, updateSubscriptionStatus, changeVendorPlan, getPlanChangeHistory, regenerateVendorQR } from "../controllers/adminController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
 
@@ -28,5 +28,8 @@ router.get("/vendors/:id/plan-history", getPlanChangeHistory);
 
 // Analytics
 router.get("/analytics", getAdminAnalytics);
+
+// Regenerate QR codes for a vendor
+router.post("/vendors/:id/regenerate-qr", regenerateVendorQR);
 
 export default router;

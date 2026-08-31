@@ -496,3 +496,32 @@ export const getPlanChangeHistory = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+// ADMIN: Regenerate QR codes for a vendor
+export const regenerateVendorQR = async (req, res) => {
+  try {
+    const { id: vendorId } = req.params;
+    const QRCode = (await import('qrcode')).default;
+    const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'https://dineflow-rho-fawn.vercel.app';
+
+    const tables = await Table.find({ vendorId });
+    if (!tables.length) {
+      return res.status(404).json({ success: false, message: 'No tables found for this vendor' });
+    }
+
+    let updated = 0;
+    for (const table of tables) {
+      const qrUrl = `${frontendUrl}/menu/${vendorId}/${table._id}`;
+      const qrCode = await QRCode.toDataURL(qrUrl);
+      table.qrUrl = qrUrl;
+      table.qrCode = qrCode;
+      await table.save();
+      updated++;
+    }
+
+    res.json({ success: true, message: `Regenerated ${updated} QR codes with ${frontendUrl}`, count: updated, frontendUrl });
+  } catch (error) {
+    console.error('Regenerate Vendor QR Error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
