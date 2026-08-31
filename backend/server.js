@@ -48,13 +48,16 @@ const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
   cors: {
     origin: [
+      process.env.CLIENT_URL,
+      process.env.FRONTEND_URL,
       "http://localhost:5173",
       "http://localhost:5174",
       "http://localhost:4173",
-    ],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    ].filter(Boolean),
+    methods: ["GET", "POST"],
     credentials: true,
   },
+  transports: ["websocket", "polling"],
 });
 
 // Expose io to controllers via req.app.get("io")
