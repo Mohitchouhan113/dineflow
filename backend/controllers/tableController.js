@@ -31,7 +31,7 @@ export const createTable = async (req, res) => {
       tableNumber: tableNumber.trim(),
     });
 
-    // Frontend URL — use env var, fallback to request origin
+    // Frontend URL — CLIENT_URL, FRONTEND_URL, fallback to Vercel domain
     const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'https://dineflow-rho-fawn.vercel.app';
     const qrUrl = `${frontendUrl}/menu/${req.user.vendorId}/${table._id}`;
 
@@ -174,7 +174,6 @@ export const updateTable = async (req, res) => {
   }
 };
 
-// TABLE ACTIVE / INACTIVE
 // REGENERATE QR CODE FOR EXISTING TABLE
 export const regenerateQR = async (req, res) => {
   try {
@@ -189,7 +188,7 @@ export const regenerateQR = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Table not found' });
     }
 
-const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'https://dineflow-rho-fawn.vercel.app';
+    const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'https://dineflow-rho-fawn.vercel.app';
     const qrUrl = `${frontendUrl}/menu/${req.user.vendorId}/${table._id}`;
     const qrCode = await QRCode.toDataURL(qrUrl);
 
@@ -204,6 +203,7 @@ const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'https
   }
 };
 
+// TABLE ACTIVE / INACTIVE
 export const updateTableStatus = async (req, res) => {
   try {
     const { isActive } = req.body;
