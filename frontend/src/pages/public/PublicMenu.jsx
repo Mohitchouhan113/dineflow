@@ -63,7 +63,7 @@ export default function PublicMenu() {
     useState("");
 
   const [activeCategory, setActiveCategory] =
-    useState("");
+    useState("all");
 
   // ==============================
   // CART
@@ -139,13 +139,7 @@ export default function PublicMenu() {
               : []
           );
 
-          if (
-            fetchedCategories.length > 0
-          ) {
-            setActiveCategory(
-              fetchedCategories[0]._id
-            );
-          }
+          setActiveCategory("all");
 
           return;
         }
@@ -185,13 +179,7 @@ export default function PublicMenu() {
             groupedItems
           );
 
-          if (
-            groupedCategories.length > 0
-          ) {
-            setActiveCategory(
-              groupedCategories[0]._id
-            );
-          }
+          setActiveCategory("all");
 
           return;
         }
@@ -697,6 +685,17 @@ export default function PublicMenu() {
 
         {/* CATEGORY NAV */}
         <div className="max-w-5xl mx-auto px-5 sm:px-6 pb-4 overflow-x-auto no-scrollbar flex gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveCategory("all")}
+            className={`whitespace-nowrap px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+              activeCategory === "all"
+                ? "bg-[#2C2825] text-white shadow-md"
+                : "bg-[#F5F2EA] text-[#5C5549] hover:bg-[#EAE5D9]"
+            }`}
+          >
+            All
+          </button>
           {categories.map(
             (category) => (
               <button
@@ -705,7 +704,7 @@ export default function PublicMenu() {
                 }
                 type="button"
                 onClick={() =>
-                  scrollToCategory(
+                  setActiveCategory(
                     category._id
                   )
                 }
@@ -749,6 +748,14 @@ export default function PublicMenu() {
           ) : (
             categories.map(
             (category) => {
+              // Filter categories by active selection
+              if (
+                activeCategory !== "all" &&
+                category._id !== activeCategory
+              ) {
+                return null;
+              }
+
               // ==============================
               // IMPORTANT FIX:
               // backend uses categoryId
