@@ -37,8 +37,8 @@ function App() {
           <Route path="/menu/:vendorId/:tableId" element={<PublicMenu />} />
           <Route path="/order-success" element={<OrderSuccess />} />
 
-          {/* Chef Route */}
-          <Route path="/chef/dashboard" element={<ChefDashboard />} />
+          {/* Chef Route (chef role only) */}
+          <Route path="/chef/dashboard" element={<ProtectedRoute allowedRoles={["chef"]}><ChefDashboard /></ProtectedRoute>} />
 
           {/* Admin Routes (superAdmin only) */}
           <Route path="/admin" element={<ProtectedRoute allowedRoles={["superAdmin"]}><AdminLayout /></ProtectedRoute>}>

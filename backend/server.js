@@ -41,6 +41,20 @@ app.use("/api/public", publicRoutes);
 app.use("/api/chef", chefRoutes);
 
 // =============================================
+// GLOBAL ERROR HANDLER (Express 5 requires this)
+// Without it, unhandled errors DROP the connection
+// =============================================
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err);
+  if (!res.headersSent) {
+    res.status(err.status || 500).json({
+      success: false,
+      message: err.message || "Internal server error",
+    });
+  }
+});
+
+// =============================================
 // SOCKET.IO SETUP
 // =============================================
 const httpServer = http.createServer(app);
