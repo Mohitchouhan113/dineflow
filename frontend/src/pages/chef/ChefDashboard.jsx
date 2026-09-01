@@ -21,7 +21,12 @@ export default function ChefDashboard() {
       setOrders(orderList);
     } catch (err) {
       console.error('[ChefDashboard] Fetch error:', err?.response?.status, err?.response?.data || err.message);
-      setError('Failed to fetch orders. Please try again.');
+      // Network error (no response) usually means Render server is waking up
+      if (!err.response && err.message === 'Network Error') {
+        setError('Server is starting up. This may take up to 30 seconds on first visit.');
+      } else {
+        setError('Failed to fetch orders. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -151,7 +156,7 @@ export default function ChefDashboard() {
         {error && (
           <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-between">
             <span className="text-red-500 text-sm font-medium">{error}</span>
-            <button onClick={fetchOrders} className="text-xs bg-red-500/20 text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-500/30 transition-colors">Retry</button>
+            <button onClick={() => { setIsLoading(true); setError(null); fetchOrders(); }} className="text-xs bg-red-500/20 text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-500/30 transition-colors">Retry</button>
           </div>
         )}
 
