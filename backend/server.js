@@ -70,15 +70,17 @@ io.on("connection", (socket) => {
   // Join vendor-specific room
   socket.on("join-vendor-room", (vendorId) => {
     if (!vendorId) return;
-    socket.join(`vendor:${vendorId}`);
-    console.log(`[Socket] ${socket.id} joined vendor:${vendorId}`);
+    const roomId = `vendor:${String(vendorId)}`;
+    socket.join(roomId);
+    console.log(`[Socket] ${socket.id} joined ${roomId}`);
   });
 
   // Join chef room (same vendor room)
   socket.on("join-chef-room", (vendorId) => {
     if (!vendorId) return;
-    socket.join(`vendor:${vendorId}`);
-    console.log(`[Socket] Chef ${socket.id} joined vendor:${vendorId}`);
+    const roomId = `vendor:${String(vendorId)}`;
+    socket.join(roomId);
+    console.log(`[Socket] Chef ${socket.id} joined ${roomId}`);
   });
 
   // Join order-specific room (for customer OrderSuccess page)

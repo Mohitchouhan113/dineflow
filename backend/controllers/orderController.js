@@ -357,11 +357,12 @@ export const placeOrder = async (req, res) => {
     try {
       const io = req.app.get("io");
       if (io) {
-        io.to(`vendor:${vendorId}`).emit("new-order", {
+        const roomId = `vendor:${String(vendorId)}`;
+        io.to(roomId).emit("new-order", {
           type: "new-order",
           orderId: order._id,
           orderNumber: `ORD-${order._id.toString().slice(-4).toUpperCase()}`,
-          vendorId,
+          vendorId: String(vendorId),
           table: table.tableNumber,
           total: totalAmount,
           paymentMethod: order.paymentMethod,
@@ -413,11 +414,20 @@ export const getVendorOrders = async (req, res) => {
 // ==============================
 export const getChefOrders = async (req, res) => {
   try {
-    const orders = await Order.find({
-      vendorId: req.user.vendorId,
-    })
+    // Validate vendorId exists on authenticated user
+    if (!req.user || !req.user.vendorId) {
+      return res.status(403).json({
+        success: false,
+        message: "No vendor associated with this chef account",
+      });
+    }
+
+    const vendorId = req.user.vendorId;
+
+    const orders = await Order.find({ vendorId })
       .populate("tableId", "tableNumber")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .maxTimeMS(10000);
 
     res.status(200).json({
       success: true,
@@ -426,11 +436,13 @@ export const getChefOrders = async (req, res) => {
     });
   } catch (error) {
     console.error("Chef Orders Error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    // Always send a response — never let the connection hang
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to load orders",
+      });
+    }
   }
 };
 
@@ -534,22 +546,23 @@ export const updatePaymentStatus = async (req, res) => {
     try {
       const io = req.app.get("io");
       if (io) {
-        io.to(`vendor:${order.vendorId}`).emit("payment-status-updated", {
+        const roomId = `vendor:${order.vendorId.toString()}`;
+        io.to(roomId).emit("payment-status-updated", {
           type: "payment-status-updated",
           orderId: order._id,
           orderNumber: `ORD-${order._id.toString().slice(-4).toUpperCase()}`,
-          vendorId: order.vendorId,
+          vendorId: order.vendorId.toString(),
           paymentStatus,
           updatedAt: order.updatedAt,
         });
 
         // Also emit order-status-updated if order was auto-completed
         if (paymentStatus === "paid" && order.orderStatus === "completed") {
-          io.to(`vendor:${order.vendorId}`).emit("order-status-updated", {
+          io.to(roomId).emit("order-status-updated", {
             type: "order-status-updated",
             orderId: order._id,
             orderNumber: `ORD-${order._id.toString().slice(-4).toUpperCase()}`,
-            vendorId: order.vendorId,
+            vendorId: order.vendorId.toString(),
             orderStatus: "completed",
             updatedAt: order.updatedAt,
           });
@@ -630,6 +643,8 @@ export const updateOrderStatus = async (req, res) => {
     try {
       const io = req.app.get("io");
       if (io) {
+        const vendorRoomId = `vendor:${order.vendorId.toString()}`;
+        const orderRoomId = `order:${order._id.toString()}`;
         const statusPayload = {
           type: "order-status-updated",
           orderId: order._id.toString(),
@@ -638,8 +653,8 @@ export const updateOrderStatus = async (req, res) => {
           status,
           updatedAt: order.updatedAt,
         };
-        io.to(`vendor:${order.vendorId}`).emit("order-status-updated", statusPayload);
-        io.to(`order:${order._id}`).emit("order-status-updated", statusPayload);
+        io.to(vendorRoomId).emit("order-status-updated", statusPayload);
+        io.to(orderRoomId).emit("order-status-updated", statusPayload);
       }
     } catch (e) {
       console.error("Socket emit order-status-updated error:", e);
