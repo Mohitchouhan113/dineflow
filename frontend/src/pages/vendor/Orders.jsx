@@ -204,6 +204,7 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
+  const [paymentFilter, setPaymentFilter] = useState('all');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -273,7 +274,8 @@ export default function Orders() {
     : orders;
 
   const filteredOrders = searchFilteredOrders
-    .filter((o) => activeTab === 'all' || o.orderStatus === activeTab);
+    .filter((o) => activeTab === 'all' || o.orderStatus === activeTab)
+    .filter((o) => paymentFilter === 'all' || o.paymentStatus === paymentFilter);
 
   const tabCounts = {};
   for (const tab of STATUS_TABS) {
@@ -318,27 +320,45 @@ export default function Orders() {
       </div>
 
       {/* Status Tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-1 -mx-1 px-1">
-        {STATUS_TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-              activeTab === tab.key
-                ? 'bg-primary text-background shadow-md shadow-primary/20'
-                : 'bg-surface-elevated text-text-secondary hover:bg-surface-higher border border-border/50'
-            }`}
-          >
-            {tab.label}
-            <span className={`ml-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-              activeTab === tab.key
-                ? 'bg-white/20 text-background'
-                : 'bg-surface text-text-muted'
-            }`}>
-              {tabCounts[tab.key]}
-            </span>
-          </button>
-        ))}
+      <div className="space-y-2">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                activeTab === tab.key
+                  ? 'bg-primary text-background shadow-md shadow-primary/20'
+                  : 'bg-surface-elevated text-text-secondary hover:bg-surface-higher border border-border/50'
+              }`}
+            >
+              {tab.label}
+              <span className={`ml-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                activeTab === tab.key
+                  ? 'bg-white/20 text-background'
+                  : 'bg-surface text-text-muted'
+              }`}>
+                {tabCounts[tab.key]}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mr-1">Payment:</span>
+          {['all', 'paid', 'pending'].map((pf) => (
+            <button
+              key={pf}
+              onClick={() => setPaymentFilter(pf)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                paymentFilter === pf
+                  ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
+                  : 'bg-surface-elevated text-text-muted border border-border/50 hover:text-text-secondary'
+              }`}
+            >
+              {pf === 'all' ? 'All' : pf === 'paid' ? 'Paid' : 'Unpaid'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Error */}
@@ -365,7 +385,7 @@ export default function Orders() {
           <p className="text-sm font-medium">
             {globalSearch.trim()
               ? 'No orders match your search'
-              : activeTab === 'all' ? 'No orders yet' : `No ${activeTab} orders`}
+              : activeTab === 'all' && paymentFilter === 'all' ? 'No orders yet' : `No matching orders`}
           </p>
           <p className="text-xs text-text-muted mt-1">
             {globalSearch.trim()
