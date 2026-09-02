@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import Vendor from "../models/Vendor.js";
+import Razorpay from "razorpay";
 
 // =============================
 // GET VENDOR SETTINGS
@@ -167,6 +168,108 @@ export const changePassword = async (req, res) => {
     res.status(200).json({ success: true, message: "Password changed successfully" });
   } catch (error) {
     console.error("Change Password Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// =============================
+// GET VENDOR PAYMENT SETTINGS
+// =============================
+export const getPaymentSettings = async (req, res) => {
+  try {
+    const vendor = await Vendor.findOne({ ownerId: req.user._id });
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: "Vendor not found" });
+    }
+
+    const ps = vendor.paymentSettings || {};
+    res.status(200).json({
+      success: true,
+      paymentSettings: {
+        razorpayKeyId: ps.razorpayKeyId || "",
+        razorpayKeySecret: ps.razorpayKeySecret ? "••••••" + ps.razorpayKeySecret.slice(-4) : "",
+        upiId: ps.upiId || "",
+        isGatewayActive: ps.isGatewayActive || false,
+        hasCredentials: !!(ps.razorpayKeyId && ps.razorpayKeySecret),
+      },
+    });
+  } catch (error) {
+    console.error("Get Payment Settings Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// =============================
+// UPDATE VENDOR PAYMENT SETTINGS
+// =============================
+export const updatePaymentSettings = async (req, res) => {
+  try {
+    const { razorpayKeyId, razorpayKeySecret, upiId, isGatewayActive } = req.body;
+
+    const vendor = await Vendor.findOne({ ownerId: req.user._id });
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: "Vendor not found" });
+    }
+
+    // Initialize paymentSettings if not present
+    if (!vendor.paymentSettings) {
+      vendor.paymentSettings = {};
+    }
+
+    // Update fields (only if provided)
+    if (razorpayKeyId !== undefined) vendor.paymentSettings.razorpayKeyId = razorpayKeyId.trim();
+    if (razorpayKeySecret !== undefined && razorpayKeySecret !== "") {
+      // Only update if not a masked placeholder
+      if (!razorpayKeySecret.startsWith("••••")) {
+        vendor.paymentSettings.razorpayKeySecret = razorpayKeySecret.trim();
+      }
+    }
+    if (upiId !== undefined) vendor.paymentSettings.upiId = upiId.trim();
+    if (isGatewayActive !== undefined) vendor.paymentSettings.isGatewayActive = !!isGatewayActive;
+
+    // Validate: if enabling gateway, both keyId and keySecret must be present
+    if (vendor.paymentSettings.isGatewayActive) {
+      if (!vendor.paymentSettings.razorpayKeyId || !vendor.paymentSettings.razorpayKeySecret) {
+        return res.status(400).json({
+          success: false,
+          message: "Both Razorpay Key ID and Key Secret are required to enable online payments",
+        });
+      }
+
+      // Validate Razorpay credentials by making a test API call
+      try {
+        const testInstance = new Razorpay({
+          key_id: vendor.paymentSettings.razorpayKeyId,
+          key_secret: vendor.paymentSettings.razorpayKeySecret,
+        });
+        // Fetch one order to validate credentials (Razorpay API test)
+        await testInstance.orders.all({ count: 1 });
+      } catch (rpError) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid Razorpay credentials. Please verify your Key ID and Key Secret.",
+        });
+      }
+    }
+
+    await vendor.save();
+
+    const ps = vendor.paymentSettings;
+    res.status(200).json({
+      success: true,
+      message: vendor.paymentSettings.isGatewayActive
+        ? "Payment gateway enabled successfully"
+        : "Payment settings saved successfully",
+      paymentSettings: {
+        razorpayKeyId: ps.razorpayKeyId || "",
+        razorpayKeySecret: ps.razorpayKeySecret ? "••••••" + ps.razorpayKeySecret.slice(-4) : "",
+        upiId: ps.upiId || "",
+        isGatewayActive: ps.isGatewayActive || false,
+        hasCredentials: !!(ps.razorpayKeyId && ps.razorpayKeySecret),
+      },
+    });
+  } catch (error) {
+    console.error("Update Payment Settings Error:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };

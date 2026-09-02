@@ -141,6 +141,13 @@ const vendorSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    paymentSettings: {
+      razorpayKeyId: { type: String, default: "" },
+      razorpayKeySecret: { type: String, default: "" },
+      upiId: { type: String, default: "" },
+      isGatewayActive: { type: Boolean, default: false },
+    },
   },
   {
     timestamps: true,

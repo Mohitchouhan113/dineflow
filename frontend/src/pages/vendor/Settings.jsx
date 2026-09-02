@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import {
   Store, Clock, CreditCard, Shield, Save, Loader2, CheckCircle2, XCircle,
   User, Mail, Phone, MapPin, ToggleLeft, ToggleRight, Lock, AlertTriangle,
+  Key, Smartphone, Globe,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -81,6 +82,46 @@ export default function Settings() {
   const [passwords, setPasswords] = useState({ current: '', newPass: '', confirm: '' });
   const [passwordError, setPasswordError] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+
+  // Payment gateway state
+  const [paymentSettings, setPaymentSettings] = useState({
+    razorpayKeyId: '',
+    razorpayKeySecret: '',
+    upiId: '',
+    isGatewayActive: false,
+    hasCredentials: false,
+  });
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(true);
+  const [paymentToast, setPaymentToast] = useState(null);
+
+  const fetchPaymentSettings = useCallback(async () => {
+    try {
+      setPaymentLoading(true);
+      const res = await api.get('/api/vendor/settings/payment');
+      setPaymentSettings(res.data.paymentSettings);
+    } catch (err) {
+      console.error('Failed to load payment settings:', err);
+    } finally {
+      setPaymentLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchPaymentSettings(); }, [fetchPaymentSettings]);
+
+  const handleSavePaymentSettings = async () => {
+    setPaymentToast(null);
+    try {
+      setPaymentSaving(true);
+      const res = await api.put('/api/vendor/settings/payment', paymentSettings);
+      setPaymentSettings(res.data.paymentSettings);
+      setPaymentToast({ type: 'success', message: res.data.message });
+    } catch (err) {
+      setPaymentToast({ type: 'error', message: err.response?.data?.message || 'Failed to save payment settings' });
+    } finally {
+      setPaymentSaving(false);
+    }
+  };
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -368,6 +409,110 @@ export default function Settings() {
                 />
               </div>
             </div>
+          </Section>
+
+          {/* Payment Gateway */}
+          <Section icon={CreditCard} title="Payment Gateway (Razorpay)">
+            {paymentLoading ? (
+              <div className="flex items-center gap-2 py-4 text-text-muted">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Loading payment settings...</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Status indicator */}
+                <div className="p-3 rounded-xl border flex items-center justify-between" style={{ backgroundColor: paymentSettings.isGatewayActive ? 'rgba(16,185,129,0.05)' : 'rgba(107,114,128,0.05)', borderColor: paymentSettings.isGatewayActive ? 'rgba(16,185,129,0.2)' : 'rgba(107,114,128,0.2)' }}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: paymentSettings.isGatewayActive ? '#10b981' : '#6b7280' }} />
+                    <span className="text-sm font-medium text-text-primary">
+                      {paymentSettings.isGatewayActive ? 'Gateway Active' : 'Gateway Inactive'}
+                    </span>
+                  </div>
+                  <span className="text-xs text-text-muted">
+                    {paymentSettings.hasCredentials ? 'Credentials saved' : 'No credentials'}
+                  </span>
+                </div>
+
+                {paymentToast && (
+                  <div className={`p-3 rounded-lg text-sm flex items-center gap-2 ${
+                    paymentToast.type === 'success'
+                      ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                      : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                  }`}>
+                    {paymentToast.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                    {paymentToast.message}
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-text-primary">Razorpay Key ID</label>
+                  <div className="relative">
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                    <Input
+                      className="pl-9"
+                      placeholder="rzp_test_xxxxxxxxxxxxx"
+                      value={paymentSettings.razorpayKeyId}
+                      onChange={e => setPaymentSettings(p => ({ ...p, razorpayKeyId: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-text-primary">Razorpay Key Secret</label>
+                  <div className="relative">
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                    <Input
+                      className="pl-9"
+                      type="password"
+                      placeholder={paymentSettings.hasCredentials ? '•••••• (leave blank to keep existing)' : 'Enter your Key Secret'}
+                      value={paymentSettings.razorpayKeySecret}
+                      onChange={e => setPaymentSettings(p => ({ ...p, razorpayKeySecret: e.target.value }))}
+                    />
+                  </div>
+                  <p className="text-xs text-text-muted">Find this in your Razorpay Dashboard → Settings → API Keys</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-text-primary">UPI ID (Optional)</label>
+                  <div className="relative">
+                    <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                    <Input
+                      className="pl-9"
+                      placeholder="restaurant@upi"
+                      value={paymentSettings.upiId}
+                      onChange={e => setPaymentSettings(p => ({ ...p, upiId: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-border/30 pt-2">
+                  <Toggle
+                    enabled={paymentSettings.isGatewayActive}
+                    onChange={v => setPaymentSettings(p => ({ ...p, isGatewayActive: v }))}
+                    label="Enable Vendor Payment Gateway"
+                    description="When enabled, customer online payments go directly to your Razorpay account"
+                  />
+                </div>
+
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+                  <p className="text-xs text-text-muted leading-relaxed">
+                    {paymentSettings.isGatewayActive
+                      ? '✅ Customer payments will be routed to your Razorpay account. You will receive payments directly.'
+                      : 'When inactive, customer payments use the platform default Razorpay account.'}
+                  </p>
+                </div>
+
+                <Button
+                  onClick={handleSavePaymentSettings}
+                  disabled={paymentSaving}
+                  variant="ghost"
+                  className="w-full gap-2 border border-border/50 hover:border-primary/30"
+                >
+                  {paymentSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {paymentSaving ? 'Saving...' : 'Save Payment Settings'}
+                </Button>
+              </div>
+            )}
           </Section>
 
           {/* Account & Security */}

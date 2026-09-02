@@ -40,7 +40,7 @@ import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
 
 import { getVendorOrders, getActiveOrderForTable, updatePaymentStatus, getDashboardSummary, getVendorAnalytics } from "../controllers/orderController.js";
-import { getVendorSettings, updateVendorSettings, getVendorPublicInfo, changePassword } from "../controllers/settingsController.js";
+import { getVendorSettings, updateVendorSettings, getVendorPublicInfo, changePassword, getPaymentSettings, updatePaymentSettings } from "../controllers/settingsController.js";
 import { getBillingInfo, createSubscriptionOrder, verifySubscriptionPayment, getSubscriptionStatus, getSubscriptionUsage } from "../controllers/billingController.js";
 import { enforcePlanLimit, checkRestricted } from "../middleware/subscriptionGuard.js";
 import { attachSubscriptionInfo, enforceAnalyticsRange } from "../middleware/subscriptionInfo.js";
@@ -126,6 +126,12 @@ router.get("/settings", getVendorSettings);
 router.put("/settings", updateVendorSettings);
 router.get("/info", getVendorPublicInfo);
 router.put("/change-password", changePassword);
+
+// ==============================
+// PAYMENT SETTINGS ROUTES
+// =============================
+router.get("/settings/payment", getPaymentSettings);
+router.put("/settings/payment", updatePaymentSettings);
 
 // ==============================
 // BILLING & SUBSCRIPTION ROUTES

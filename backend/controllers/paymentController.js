@@ -1,8 +1,44 @@
 import crypto from "crypto";
 import mongoose from "mongoose";
+import Razorpay from "razorpay";
 
 import Order from "../models/Order.js";
+import Vendor from "../models/Vendor.js";
 import razorpay from "../config/razorpay.js";
+
+// ==============================
+// HELPER: Get Razorpay instance
+// for a given vendor.
+// If vendor has paymentSettings with
+// valid credentials and isGatewayActive,
+// use vendor-specific keys.
+// Otherwise fall back to global keys.
+// ==============================
+async function getRazorpayForVendor(vendorId) {
+  if (!vendorId) {
+    return { instance: razorpay, keyId: process.env.RAZORPAY_KEY_ID, keySecret: process.env.RAZORPAY_KEY_SECRET };
+  }
+
+  const vendor = await Vendor.findById(vendorId).select("paymentSettings");
+  if (
+    vendor?.paymentSettings?.isGatewayActive &&
+    vendor.paymentSettings.razorpayKeyId &&
+    vendor.paymentSettings.razorpayKeySecret
+  ) {
+    const vendorRazorpay = new Razorpay({
+      key_id: vendor.paymentSettings.razorpayKeyId,
+      key_secret: vendor.paymentSettings.razorpayKeySecret,
+    });
+    return {
+      instance: vendorRazorpay,
+      keyId: vendor.paymentSettings.razorpayKeyId,
+      keySecret: vendor.paymentSettings.razorpayKeySecret,
+    };
+  }
+
+  // Fallback to global Razorpay credentials
+  return { instance: razorpay, keyId: process.env.RAZORPAY_KEY_ID, keySecret: process.env.RAZORPAY_KEY_SECRET };
+}
 
 // ==============================
 // CREATE RAZORPAY ORDER
@@ -48,6 +84,9 @@ export const createRazorpayOrder = async (req, res) => {
       });
     }
 
+    // Get vendor-specific or global Razorpay instance
+    const { instance: rpInstance, keyId } = await getRazorpayForVendor(order.vendorId);
+
     // Razorpay expects amount in paise
     const amountInPaise = Math.round(
       order.totalAmount * 100
@@ -68,7 +107,7 @@ export const createRazorpayOrder = async (req, res) => {
     };
 
     const razorpayOrder =
-      await razorpay.orders.create(options);
+      await rpInstance.orders.create(options);
 
     order.razorpayOrderId = razorpayOrder.id;
 
@@ -79,7 +118,7 @@ export const createRazorpayOrder = async (req, res) => {
       message: "Payment order created successfully",
 
       payment: {
-        key: process.env.RAZORPAY_KEY_ID,
+        key: keyId,
         razorpayOrderId: razorpayOrder.id,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
@@ -156,6 +195,9 @@ export const verifyRazorpayPayment = async (
       });
     }
 
+    // Get vendor-specific or global Razorpay secret for signature verification
+    const { keySecret } = await getRazorpayForVendor(order.vendorId);
+
     const body =
       razorpay_order_id +
       "|" +
@@ -164,7 +206,7 @@ export const verifyRazorpayPayment = async (
     const expectedSignature = crypto
       .createHmac(
         "sha256",
-        process.env.RAZORPAY_KEY_SECRET
+        keySecret
       )
       .update(body)
       .digest("hex");
