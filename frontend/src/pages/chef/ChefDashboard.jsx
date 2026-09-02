@@ -21,11 +21,15 @@ export default function ChefDashboard() {
       setOrders(orderList);
     } catch (err) {
       console.error('[ChefDashboard] Fetch error:', err?.response?.status, err?.response?.data || err.message);
-      // Network error (no response) usually means Render server is waking up
-      if (!err.response && err.message === 'Network Error') {
-        setError('Server is starting up. This may take up to 30 seconds on first visit.');
+      if (!err.response) {
+        // Network error — server may be waking up from sleep
+        setError('Unable to connect to server. Retrying automatically...');
+      } else if (err.response.status === 401) {
+        setError('Session expired. Please log in again.');
+      } else if (err.response.status === 403) {
+        setError('Access denied. Chef account required.');
       } else {
-        setError('Failed to fetch orders. Please try again.');
+        setError(`Server error (${err.response.status}). Please try again.`);
       }
     } finally {
       setIsLoading(false);

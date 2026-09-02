@@ -25,6 +25,18 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Global request timeout — kill requests before Render's proxy does
+app.use((req, res, next) => {
+  const TIMEOUT_MS = 25000; // 25 seconds (Render free-tier kills at ~30s)
+  req.setTimeout(TIMEOUT_MS, () => {
+    if (!res.headersSent) {
+      console.error(`[Timeout] Request timed out: ${req.method} ${req.url}`);
+      res.status(504).json({ success: false, message: 'Request timed out' });
+    }
+  });
+  next();
+});
+
 // Test Route
 app.get("/", (req, res) => {
   res.status(200).json({

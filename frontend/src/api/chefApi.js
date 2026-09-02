@@ -11,7 +11,8 @@ async function withRetry(fn, retries = 3, baseDelay = 5000) {
       const isNetworkError = !err.response;
       if (isNetworkError && i < retries) {
         const waitMs = baseDelay * Math.pow(2, i);
-        console.warn(`[chefApi] Retry ${i + 1}/${retries} in ${waitMs / 1000}s (server may be starting up)...`);
+        const attempt = i + 1;
+        console.warn(`[chefApi] Attempt ${attempt}/${retries + 1} failed. Retrying in ${waitMs / 1000}s...`);
         await new Promise(r => setTimeout(r, waitMs));
         continue;
       }
@@ -20,5 +21,8 @@ async function withRetry(fn, retries = 3, baseDelay = 5000) {
   }
 }
 
-export const getChefOrders = () => withRetry(() => api.get('/api/chef/orders'));
-export const updateOrderStatus = (id, status) => api.patch(`/api/chef/orders/${id}/status`, { status });
+export const getChefOrders = () => withRetry(() =>
+  api.get('/api/chef/orders', { timeout: 20000 }) // 20s axios timeout
+);
+export const updateOrderStatus = (id, status) =>
+  api.patch(`/api/chef/orders/${id}/status`, { status }, { timeout: 10000 });
