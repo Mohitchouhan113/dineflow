@@ -8,10 +8,15 @@ export default function ChefDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
+  const fetchingRef = React.useRef(false);
 
-  const fetchOrders = async () => {
+  const fetchOrders = React.useCallback(async (showError = true) => {
+    // Prevent overlapping fetch chains (critical during cold-start retries)
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    
     try {
-      setError(null);
+      if (showError) setError(null);
       const res = await getChefOrders();
       const orderList = Array.isArray(res.data)
         ? res.data
@@ -19,11 +24,11 @@ export default function ChefDashboard() {
         ? res.data.orders
         : [];
       setOrders(orderList);
+      setError(null); // Clear any previous error on success
     } catch (err) {
       console.error('[ChefDashboard] Fetch error:', err?.response?.status, err?.response?.data || err.message);
       if (!err.response) {
-        // Network error — server may be waking up from sleep
-        setError('Unable to connect to server. Retrying automatically...');
+        setError('Server is starting up. Please wait a moment...');
       } else if (err.response.status === 401) {
         setError('Session expired. Please log in again.');
       } else if (err.response.status === 403) {
@@ -32,16 +37,17 @@ export default function ChefDashboard() {
         setError(`Server error (${err.response.status}). Please try again.`);
       }
     } finally {
+      fetchingRef.current = false;
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchOrders();
     // Poll every 30 seconds as fallback
-    const interval = setInterval(fetchOrders, 30000);
+    const interval = setInterval(() => fetchOrders(false), 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchOrders]);
 
   // Listen for socket events and refetch immediately
   useEffect(() => {
@@ -63,7 +69,7 @@ export default function ChefDashboard() {
       window.removeEventListener("socket:new-order", handleNewOrder);
       window.removeEventListener("socket:order-status-updated", handleStatusUpdate);
     };
-  }, []);
+  }, [fetchOrders]);
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
