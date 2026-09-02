@@ -1,5 +1,9 @@
 export const getFoodImage = (item) => {
-  if (item?.image) return item.image;
+  // Only use the stored image if it's a valid absolute URL (Cloudinary, etc.)
+  // Reject localhost/127.0.0.1 URLs — they don't work in production
+  if (item?.image && /^https?:\/\//.test(item.image) && !/localhost|127\.0\.0\.1/.test(item.image)) {
+    return item.image;
+  }
 
   const name = item?.name?.toLowerCase() || "";
 
